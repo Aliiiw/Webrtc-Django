@@ -1,5 +1,6 @@
 console.log('In main.js!')
 
+var mapPeers = {};
 
 var inputUsername = document.querySelector('#username');
 var btnJoin = document.querySelector('#btn-join');
@@ -119,7 +120,38 @@ function createOfferer(peerUsername, receiver_channel_name){
     dc.addEventListener('message', dcOnMessage)
 
     var remoteVideo = createVideo(peerUsername);
-    setOnTrack(peer, peerUsername);
+    setOnTrack(peer, remoteVideo);
+
+    mapPeers[peerUsername] = [peer, dc];
+
+    peer.addEventListener('iceconnectionstatechange', () => {
+        var iceConnectionState = peer.iceConnectionState;
+
+        if(iceConnectionState === 'failed' || iceConnectionState === 'disconnected' || iceConnectionState === 'closed'){
+            delete mapPeers[peerUsername];
+
+            if(iceConnectionState != 'closed'){
+                peer.close();
+            }
+            removeVideo(remoteVideo);
+        }
+    });
+
+    peer.addEventListener('icecandidate', (event) => {
+        if(event.candidate){
+            console.log('new ice candidate', JSON.stringify(peer.localDescription));
+            return;
+        }
+
+        sendSignal('new-offer', {
+            'sdp' : peer.localDescription,
+            'receiver_channel_name' : receiver_channel_name,
+        })
+    });
+
+    peer.createOffer().then(o => peer.setLocalDescription(o)).then(() => {
+        console.log('Local description set successfully');
+    });
 }
 
 function addLocalTracks(peer){
@@ -140,7 +172,7 @@ function dcOnMessage(event){
 function createVideo(peerUsername) {
     var videoContainer = document.querySelector('#video-container');
 
-    var remoteVideo = document,createElement('video');
+    var remoteVideo = document.createElement('video');
 
     remoteVideo.id = peerUsername + '-video';
 
@@ -153,4 +185,21 @@ function createVideo(peerUsername) {
 
     return remoteVideo;
 
+}
+
+
+function setOnTrack (peer, remoteVideo ) {
+    var remoteStream = new MediaStream();
+
+    remoteVideo.srcObject = remoteStream;
+
+    peer.addEventListener ('track', async (event) =>{
+        remoteStream.addTrack(event.track, remoteStream);
+    });
+
+}
+
+function removeVideo(video){
+    var videoWrapper = video.parentNode;
+    videoWrapper.parentNode.removeChild(videoWrapper);
 }
