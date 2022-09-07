@@ -22,6 +22,22 @@ class ChatConsumer(AsyncWebsocketConsumer):
         print("Discconected!")
         
         
-    async def receive(self, dict_data):
-        receive_dict = json.loads(dict_data)
+    async def receive(self, text_data):
+        receive_dict = json.loads(text_data)
         message = receive_dict['message']
+        
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type' : 'send.message',
+                'message' : message
+            }
+        )
+    
+    async def send_message(self, event):
+        message = event['message']
+        
+        await self.send(text_data=json.dumps({
+            'message' : message
+        }))
+        
