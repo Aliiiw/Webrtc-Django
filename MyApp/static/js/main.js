@@ -20,6 +20,7 @@ function webSocketOnMessage(event){
     }
 
     var receiver_channel_name = parsedData['message']['receiver_channel_name'];
+
     if(action == 'new-peer'){
         createOfferer(peerUsername, receiver_channel_name);
 
@@ -99,7 +100,7 @@ const constraints = {
     'video' : true,
     'audio' : true
 };
-
+ 
 const localVideo = document.querySelector('#local-video');
 
 
@@ -163,6 +164,7 @@ function createOfferer(peerUsername, receiver_channel_name){
     var peer = new RTCPeerConnection(null);
 
     addLocalTracks(peer);
+
     var dc = peer.createDataChannel('channel');
     dc.addEventListener('open', () => {
         console.log('Connection Opened!')
@@ -172,7 +174,7 @@ function createOfferer(peerUsername, receiver_channel_name){
 
     var remoteVideo = createVideo(peerUsername);
     setOnTrack(peer, remoteVideo);
-
+ 
     mapPeers[peerUsername] = [peer, dc];
 
     peer.addEventListener('iceconnectionstatechange', () => {
@@ -196,8 +198,8 @@ function createOfferer(peerUsername, receiver_channel_name){
 
         sendSignal('new-offer', {
             'sdp' : peer.localDescription,
-            'receiver_channel_name' : receiver_channel_name,
-        })
+            'receiver_channel_name' : receiver_channel_name
+        });
     });
 
     peer.createOffer().then(o => peer.setLocalDescription(o)).then(() => {
@@ -266,13 +268,14 @@ function addLocalTracks(peer){
     localStream.getTracks().forEach(track => {
         peer.addTrack(track, localStream);
     });
+    return;
 }
 
 var messageList = document.querySelector('#message-list');
 var btnSendMsg = document.querySelector ('#btn-send-msg');
 var messageInput = document.querySelector('#msg');
 
-btnSendMsg.addEventListener ( ' click ' , sendMsgOnClick ) ;
+btnSendMsg.addEventListener ('click' , sendMsgOnClick) ;
 function sendMsgOnClick () {
 
     var message = messageInput.value;
@@ -319,12 +322,12 @@ function createVideo(peerUsername) {
 
 }
 
-function setOnTrack (peer, remoteVideo ) {
+function setOnTrack (peer, remoteVideo) {
     var remoteStream = new MediaStream();
 
     remoteVideo.srcObject = remoteStream;
 
-    peer.addEventListener ('track', async (event) =>{
+    peer.addEventListener('track', async (event) =>{
         remoteStream.addTrack(event.track, remoteStream);
     });
 
