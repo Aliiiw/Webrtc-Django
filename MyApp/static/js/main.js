@@ -10,8 +10,20 @@ var webSocket;
 
 function webSocketOnMessage(event){
     var parsedData = JSON.parse(event.data);
-    var message = parsedData['message'];
-    console.log('meess' , message);
+
+    var peerUsername = parsedData['peer'];
+    var action = parsedData['action'];
+
+    if(username == peerUsername) {
+        return;
+    }
+
+    var receiver_channel_name = parsedData['message']['receiver_channel_name'];
+    if(action == 'new-peer'){
+        createOfferer(peerUsername, receiver_channel_name);
+
+        return;
+    }
 }
 
 btnJoin.addEventListener('click', () => {
@@ -48,11 +60,8 @@ btnJoin.addEventListener('click', () => {
 
     webSocket.addEventListener('open', (e) => {
         console.log('connection open!');
-        var jsonStr = JSON.stringify({
-            'message' : 'This is the message',
-        });
 
-        webSocket.send(jsonStr);
+        sendSignal('new-peer', {});
     });
 
     webSocket.addEventListener('message', webSocketOnMessage);
@@ -84,4 +93,64 @@ var userMedia = navigator.mediaDevices.getUserMedia(constraints)
     })
     .catch(error => {
         console.log('Error accessing media devices', error);
-    })
+    });
+
+
+function sendSignal(action, message){
+
+    var jsonStr = JSON.stringify({
+        'peer' : username,
+        'action' : action,
+        'message' : message,
+    });
+
+    webSocket.send(jsonStr);
+}
+
+function createOfferer(peerUsername, receiver_channel_name){
+    var peer = new RTCPeerConnection(null);
+
+    addLocalTracks(peer);
+    var dc = peer.createDataChannel('channel');
+    dc.addEventListener('open', () => {
+        console.log('Connection Opened!')
+    });
+
+    dc.addEventListener('message', dcOnMessage)
+
+    var remoteVideo = createVideo(peerUsername);
+    setOnTrack(peer, peerUsername);
+}
+
+function addLocalTracks(peer){
+    localStream.getTracks().forEach(track => {
+        peer.addTrack(track, localStream);
+    });
+}
+
+var messageList = document.querySelector('#message-list');
+function dcOnMessage(event){
+    var message = event.data;
+
+    var listItem = document.createElement('li');
+    listItem.appendChild(document.createTextNode(message));
+    messageList.appendChild(listItem);
+}
+
+function createVideo(peerUsername) {
+    var videoContainer = document.querySelector('#video-container');
+
+    var remoteVideo = document,createElement('video');
+
+    remoteVideo.id = peerUsername + '-video';
+
+    remoteVideo.autoplay = true;
+    remoteVideo.playsInline = true;
+
+    var videoWrapper = document.createElement('div');
+    videoContainer.appendChild(videoWrapper);
+    videoWrapper.appendChild(remoteVideo);
+
+    return remoteVideo;
+
+}
